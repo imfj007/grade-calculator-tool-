@@ -1,0 +1,156 @@
+
+import React, { useState, useEffect } from "react";
+import { GradeScale } from "@/entities/GradeScale";
+import GradeCalculator from "../components/calculator/GradeCalculator";
+import SettingsPanel from "../components/calculator/SettingsPanel";
+import QuickChart from "../components/calculator/QuickChart";
+import ExportButton from "../components/calculator/ExportButton";
+import SessionHistory from "../components/calculator/SessionHistory";
+
+const DEFAULT_GRADING_SCALES = [
+  {
+    name: "Standard Percentage",
+    type: "percentage",
+    scale: [{ min: 0, max: 100, grade: "percentage", color: "#3b82f6" }],
+    is_default: true
+  },
+  {
+    name: "Standard Letter (A-F)",
+    type: "letter",
+    scale: [
+      { min: 90, max: 100, grade: "A", color: "#22c55e" },
+      { min: 80, max: 89.99, grade: "B", color: "#84cc16" },
+      { min: 70, max: 79.99, grade: "C", color: "#f59e0b" },
+      { min: 60, max: 69.99, grade: "D", color: "#f97316" },
+      { min: 0, max: 59.99, grade: "F", color: "#dc2626" }
+    ]
+  },
+  {
+    name: "Points (100 Scale)",
+    type: "points",
+    scale: [{ min: 0, max: 100, grade: "points", color: "#8b5cf6" }]
+  }
+];
+
+export default function Calculator() {
+  const [showDecimals, setShowDecimals] = useState(false);
+  const [showChart, setShowChart] = useState(true);
+  const [gradingScales, setGradingScales] = useState(DEFAULT_GRADING_SCALES);
+  const [currentGradingScale, setCurrentGradingScale] = useState(DEFAULT_GRADING_SCALES[0]);
+  const [currentGrade, setCurrentGrade] = useState(null);
+  const [sessionHistory, setSessionHistory] = useState([]);
+
+  useEffect(() => {
+    loadGradingScales();
+  }, []);
+
+  const loadGradingScales = async () => {
+    try {
+      const scales = await GradeScale.list();
+      if (scales.length > 0) {
+        setGradingScales([...DEFAULT_GRADING_SCALES, ...scales]);
+        const defaultScale = scales.find(s => s.is_default) || scales[0];
+        setCurrentGradingScale(defaultScale);
+      }
+    } catch (error) {
+      console.error("Error loading grading scales:", error);
+    }
+  };
+
+  const handleReset = (lastCalculation) => {
+    // Only add to history if it was a valid calculation (e.g., not all zeros)
+    if (lastCalculation.totalQuestions > 0 || lastCalculation.wrongAnswers > 0) {
+      setSessionHistory(prev => [lastCalculation, ...prev].slice(0, 5)); // Keep only the last 5
+    }
+  };
+
+  return (
+    <div className="space-y-8">
+      {/* Hero Section */}
+      <div className="text-center space-y-4">
+        <h1 className="text-4xl md:text-5xl font-bold bg-gradient-to-r from-teal-600 to-cyan-600 dark:from-teal-400 dark:to-cyan-400 bg-clip-text text-transparent">
+          Professional Grade Calculator
+        </h1>
+        <p className="text-xl text-muted-foreground max-w-2xl mx-auto">
+          A modern, feature-rich grading tool. Now with partial credit, session history, and improved design.
+        </p>
+      </div>
+
+      {/* Main Content Grid */}
+      <div className="grid lg:grid-cols-3 gap-8">
+        {/* Calculator - Main Column */}
+        <div className="lg:col-span-2 space-y-6">
+          <GradeCalculator
+            showDecimals={showDecimals}
+            gradingScale={currentGradingScale}
+            onGradeChange={setCurrentGrade}
+            onResetCalculation={handleReset}
+          />
+
+          {showChart && currentGrade && (
+            <QuickChart
+              totalQuestions={currentGrade.totalQuestions}
+              showDecimals={showDecimals}
+              gradingScale={currentGradingScale}
+            />
+          )}
+        </div>
+
+        {/* Settings Sidebar */}
+        <div className="space-y-6">
+          <SettingsPanel
+            showDecimals={showDecimals}
+            onShowDecimalsChange={setShowDecimals}
+            showChart={showChart}
+            onShowChartChange={setShowChart}
+            gradingScale={currentGradingScale}
+            onGradingScaleChange={setCurrentGradingScale}
+            gradingScales={gradingScales}
+          />
+
+          {currentGrade && (
+            <ExportButton
+              gradeData={currentGrade}
+              showDecimals={showDecimals}
+            />
+          )}
+          
+          <SessionHistory history={sessionHistory} onClear={() => setSessionHistory([])} />
+        </div>
+      </div>
+
+      {/* Feature Highlights */}
+      <div className="grid md:grid-cols-3 gap-6 mt-16">
+        <div className="text-center p-6 rounded-2xl bg-gradient-to-br from-sky-100 to-blue-100 dark:from-sky-900/40 dark:to-blue-800/40 border border-sky-200 dark:border-sky-700">
+          <div className="w-12 h-12 bg-sky-500 rounded-xl flex items-center justify-center mx-auto mb-4">
+            <span className="text-white font-bold">⚡</span>
+          </div>
+          <h3 className="font-semibold text-lg mb-2 text-sky-800 dark:text-sky-200">Lightning Fast</h3>
+          <p className="text-sm text-sky-600 dark:text-sky-300">
+            Grade papers in seconds with keyboard shortcuts and instant calculations
+          </p>
+        </div>
+
+        <div className="text-center p-6 rounded-2xl bg-gradient-to-br from-blue-100 to-sky-100 dark:from-blue-900/40 dark:to-sky-800/40 border border-blue-200 dark:border-blue-700">
+          <div className="w-12 h-12 bg-blue-500 rounded-xl flex items-center justify-center mx-auto mb-4">
+            <span className="text-white font-bold">📊</span>
+          </div>
+          <h3 className="font-semibold text-lg mb-2 text-blue-800 dark:text-blue-200">Multiple Formats</h3>
+          <p className="text-sm text-blue-600 dark:text-blue-300">
+            Support for percentages, letter grades, and point systems
+          </p>
+        </div>
+
+        <div className="text-center p-6 rounded-2xl bg-gradient-to-br from-sky-100 to-blue-100 dark:from-sky-900/40 dark:to-blue-800/40 border border-sky-200 dark:border-sky-700">
+          <div className="w-12 h-12 bg-sky-600 rounded-xl flex items-center justify-center mx-auto mb-4">
+            <span className="text-white font-bold">📱</span>
+          </div>
+          <h3 className="font-semibold text-lg mb-2 text-sky-800 dark:text-sky-200">Mobile Ready</h3>
+          <p className="text-sm text-sky-600 dark:text-sky-300">
+            Works perfectly on all devices with touch-friendly controls
+          </p>
+        </div>
+      </div>
+    </div>
+  );
+}
